@@ -17,18 +17,12 @@ jobs:
       - run: npm ci
       - name: Build Electron app
         run: npx electron-vite build
-      - name: Verify build output
-        run: |
-          echo "=== out/ contents ==="
-          dir out /s /b
-          echo "=== package.json main ==="
-          node -e "console.log(require('./package.json').main)"
       - name: Package Windows installer
-        run: npx electron-builder --win -c.win.signAndEditExecutable=false
+        run: npx electron-builder --win -c.win.signAndEditExecutable=false --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: windows-installer
           path: dist/*.exe
@@ -43,18 +37,12 @@ jobs:
       - run: npm ci
       - name: Build Electron app
         run: npx electron-vite build
-      - name: Verify build output
-        run: |
-          echo "=== out/ contents ==="
-          find out -type f
-          echo "=== package.json main ==="
-          node -e "console.log(require('./package.json').main)"
       - name: Package macOS installer
-        run: npx electron-builder --mac -c.mac.identity=null
+        run: npx electron-builder --mac -c.mac.identity=null --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: macos-installer
           path: dist/*.dmg
