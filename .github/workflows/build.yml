@@ -15,13 +15,20 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npm run package:win
+      - name: Build Electron app
+        run: npx electron-vite build
+      - name: Package Windows installer
+        run: npx electron-builder --win --config.win.signAndEditExecutable=false
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          DEBUG: "electron-builder"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: windows-installer
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*.blockmap
 
   build-macos:
     runs-on: macos-latest
@@ -31,10 +38,18 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npm run package:mac
+      - name: Build Electron app
+        run: npx electron-vite build
+      - name: Package macOS installer
+        run: npx electron-builder --mac
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ""
+          DEBUG: "electron-builder"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: macos-installer
-          path: dist/*.dmg
+          path: |
+            dist/*.dmg
+            dist/*.zip
