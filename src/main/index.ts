@@ -72,7 +72,7 @@ function buildItalianMenu(): void {
               type: 'info',
               title: 'Anonimizzatore',
               message: 'Anonimizzatore v1.0.0',
-              detail: 'Software per la pseudo-anonimizzazione di sentenze e atti legali.\n\nUtilizza NER (Named Entity Recognition) e pattern regex per identificare automaticamente dati personali.\n\n100% offline - Conforme al GDPR.'
+              detail: 'Software per la pseudo-anonimizzazione di sentenze e atti legali.\n\nAutore: Avv. Roberto Arcella\n\nQuesta applicazione è un fork del progetto Anonimator dell\'Avv. Filippo Strozzi, realizzata in collaborazione con il Laboratorio Avvocati e Magistrati del Distretto della Corte d\'Appello di Napoli.\n\nUtilizza NER (Named Entity Recognition) e pattern regex per identificare automaticamente dati personali.\n\n100% offline - Conforme al GDPR.'
             })
           }
         }

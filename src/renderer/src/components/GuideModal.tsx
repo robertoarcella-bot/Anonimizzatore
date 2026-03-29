@@ -116,6 +116,18 @@ export default function GuideModal({ onClose }: Props) {
             </div>
           </Section>
 
+          <Section title="Credits">
+            <p>
+              <strong className="text-white">Autore:</strong> Avv. Roberto Arcella
+            </p>
+            <p className="mt-2">
+              Questa applicazione &egrave; un fork del progetto
+              <strong className="text-white"> Anonimator</strong> dell'Avv. Filippo Strozzi,
+              realizzata in collaborazione con il <strong className="text-white">Laboratorio
+              Avvocati e Magistrati del Distretto della Corte d'Appello di Napoli</strong>.
+            </p>
+          </Section>
+
         </div>
 
         {/* Footer */}
