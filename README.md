@@ -21,10 +21,7 @@ Identifica automaticamente i dati personali presenti nel documento (nomi, codici
 - **Parole personalizzate**: aggiungi manualmente parole o frasi specifiche da anonimizzare
 - **Dizionario esportabile/importabile**: mantieni gli stessi pseudonimi tra documenti correlati
 - **Interfaccia professionale** in italiano con tema scuro
-
-## Screenshot
-
-![Revisione Entità](https://img.shields.io/badge/Schermata-Revisione%20Entit%C3%A0-blue)
+- **Guida integrata** accessibile dal menu Aiuto (F1)
 
 ## Installazione
 
@@ -32,15 +29,15 @@ Identifica automaticamente i dati personali presenti nel documento (nomi, codici
 
 Scarica l'installer dalla sezione [Releases](../../releases):
 
-> **Anonimizzatore Setup 1.0.0.exe**
+> **Anonimizzatore Setup 1.1.0.exe**
 
-Esegui il file e segui la procedura guidata.
+Esegui il file e segui la procedura guidata. Verrà creato un collegamento sul desktop e nel menu Start.
 
 ### macOS
 
 Scarica il DMG dalla sezione [Releases](../../releases):
 
-> **Anonimizzatore-1.0.0.dmg**
+> **Anonimizzatore-1.1.0.dmg**
 
 Apri il DMG e trascina l'applicazione nella cartella Applicazioni.
 
@@ -57,9 +54,9 @@ npm run package    # Crea l'installer per la piattaforma corrente
 ## Come funziona
 
 1. **Carica il documento** — Trascina un file PDF, DOCX o TXT nella zona di caricamento, oppure clicca per selezionarlo
-2. **Analisi automatica** — Il software identifica i dati personali con regex, dizionari e modello AI
-3. **Revisione** — Esamina le entità trovate, modifica gli pseudonimi, aggiungi parole personalizzate
-4. **Anonimizzazione** — Il documento viene generato con tutti i dati personali sostituiti
+2. **Analisi automatica** — Il software identifica i dati personali con tre metodi complementari: pattern regex, dizionario nomi italiani e modello AI
+3. **Revisione** — Esamina le entità trovate, modifica gli pseudonimi, rimuovi i falsi positivi, aggiungi parole personalizzate
+4. **Anonimizzazione** — Il documento viene generato con tutti i dati personali sostituiti da pseudonimi univoci
 
 ## Entità riconosciute
 
@@ -76,9 +73,22 @@ npm run package    # Crea l'installer per la piattaforma corrente
 | Data di nascita | 01/01/1985 | `[DATA_1]` |
 | Indirizzo | Via Roma, 15 | `[INDIRIZZO_1]` |
 
-## Sicurezza
+## Sicurezza dell'output
 
-Per i documenti PDF, l'output viene **ricostruito completamente da zero**: il testo originale non è presente in nessun livello del file (content stream, metadati, layer nascosti). Selezionando e copiando il testo dal PDF anonimizzato si ottengono solo gli pseudonimi.
+Per i documenti **PDF**, l'output viene **ricostruito completamente da zero**: ogni frammento di testo viene estratto con le sue coordinate originali, le entità vengono sostituite, e un nuovo PDF viene generato posizionando il testo anonimizzato alle stesse coordinate. Il testo originale non è presente in nessun livello del file (content stream, metadati, layer nascosti).
+
+Per i documenti **DOCX**, le entità vengono sostituite direttamente nel contenuto XML interno al file Word preservando la formattazione.
+
+Per i file **TXT**, la sostituzione avviene direttamente nel testo.
+
+## Riduzione dei falsi positivi
+
+Il software include una serie di meccanismi per ridurre i falsi positivi:
+
+- **Blocklist di termini legali**: oltre 200 parole del lessico giuridico (ordinanza, ricorrente, subordinata, ecc.) che non vengono mai scambiate per nomi di persona
+- **Filtraggio contestuale per "via"**: il termine "via" viene riconosciuto come indirizzo solo quando è capitalizzato ("Via") e seguito da un nome proprio, escludendo espressioni come "via subordinata", "via equitativa", "via istruttoria"
+- **"Corso" e "strada"** richiedono un numero civico per essere considerati indirizzi
+- **Deduplicazione intelligente**: nomi con le stesse parole in ordine diverso (es. "Rossi Mario" e "Mario Rossi") vengono unificati
 
 ## Stack tecnologico
 
