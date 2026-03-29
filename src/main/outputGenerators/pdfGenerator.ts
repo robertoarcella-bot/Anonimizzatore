@@ -32,13 +32,17 @@ export async function anonymizePdf(
 
   // === Step 1: Extract text fragments ===
   const path = require('path')
-  const pdfjsPath = path.resolve('node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.mjs')
+  // Resolve pdfjs-dist path relative to the app, not CWD (works both in dev and installed app)
+  const { app } = require('electron')
+  const appRoot = app.isPackaged ? path.join(process.resourcesPath, 'app.asar') : path.resolve('.')
+  const pdfjsPath = path.join(appRoot, 'node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.mjs')
+  const workerFile = path.join(appRoot, 'node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs')
+
   const dynamicImport = new Function('m', 'return import(m)')
-  const pdfjs = await dynamicImport('file:///' + pdfjsPath.replace(/\\/g, '/'))
+  const pdfjs = await dynamicImport('file:///' + pdfjsPath.split(path.sep).join('/'))
 
   if (pdfjs.GlobalWorkerOptions) {
-    const workerPath = 'file:///' + path.resolve('node_modules/pdf-parse/node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs').split('\\').join('/')
-    pdfjs.GlobalWorkerOptions.workerSrc = workerPath
+    pdfjs.GlobalWorkerOptions.workerSrc = 'file:///' + workerFile.split(path.sep).join('/')
   }
 
   const pdfjsDoc = await pdfjs.getDocument({
