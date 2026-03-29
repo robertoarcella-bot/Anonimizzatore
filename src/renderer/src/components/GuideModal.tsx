@@ -119,11 +119,17 @@ export default function GuideModal({ onClose }: Props) {
           <Section title="Credits">
             <p>
               <strong className="text-white">Autore:</strong> Avv. Roberto Arcella
+              <br />
+              <span className="text-accent-400 text-xs">github.com/robertoarcella-bot/Anonimizzatore</span>
             </p>
             <p className="mt-2">
-              Questa applicazione &egrave; un fork del progetto
-              <strong className="text-white"> Anonimator</strong> dell'Avv. Filippo Strozzi,
-              realizzata in collaborazione con il <strong className="text-white">Laboratorio
+              Fork del progetto
+              <strong className="text-white"> Anonimator</strong> dell'Avv. Filippo Strozzi
+              <br />
+              <span className="text-accent-400 text-xs">github.com/avvocati-e-mac/anonimator</span>
+            </p>
+            <p className="mt-2">
+              Realizzata in collaborazione con il <strong className="text-white">Laboratorio
               Avvocati e Magistrati del Distretto della Corte d'Appello di Napoli</strong>.
             </p>
           </Section>

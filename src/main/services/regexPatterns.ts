@@ -27,15 +27,35 @@ const DATA_NASCITA = /\b(?:nato|nata|nascit[oa]|data di nascita|n\.\s*il)\s*(?:i
 // Standalone dates (common Italian formats)
 const DATA_GENERICA = /\b\d{1,2}[/.\\-]\d{1,2}[/.\\-]\d{2,4}\b/g
 
-// Italian addresses — street type + proper name, not "corso di indagini" etc.
-// "corso" only matches with a civic number (to avoid false positives)
-// Other street types (via, piazza...) are more specific and match without number
-const INDIRIZZO_NO_CORSO = /\b(?:via|viale|piazza|piazzale|largo|vicolo|strada|contrada|loc\.|località|c\.so|p\.za|p\.le|v\.le)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?/gi
-// "corso" requires a number to be considered an address (Corso Italia 25, Corso Vittorio Emanuele, 10)
+// Italian addresses — require proper street names, NOT legal uses of "via"
+// "via" MUST be capitalized (Via) AND followed by a proper noun (capitalized) — not adjectives
+// This prevents matching "via principale", "via subordinata", "via equitativa", etc.
+const INDIRIZZO_VIA = /\bVia\s+(?:del|dello|della|dei|degli|delle|di)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?|\bVia\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?/g
+
+// Other street types (less ambiguous than "via") — case insensitive
+const INDIRIZZO_ALTRI = /\b(?:viale|piazza|piazzale|largo|vicolo|contrada|località|c\.so|p\.za|p\.le|v\.le)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?/gi
+
+// "strada" only with number (to avoid "strada presentava un...")
+const INDIRIZZO_STRADA = /\b(?:strada)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?/gi
+
+// "corso" requires a number to be considered an address
 const INDIRIZZO_CORSO = /\b(?:corso)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?/gi
 
 // Document numbers (carta d'identità, passaporto)
 const NUMERO_DOCUMENTO = /\b(?:C[AI]\d{5}[A-Z]{2}|[A-Z]{2}\d{7}|YA\d{7}|[A-Z]{2}\d{5}[A-Z]{2})\b/g
+
+// Words that CANNOT follow "Via" in an address — legal/procedural terms
+const VIA_BLOCKLIST = new Set([
+  'principale', 'subordinata', 'subordinato', 'equitativa', 'equitativo',
+  'istruttoria', 'istruttorio', 'generale', 'ordinaria', 'ordinario',
+  'straordinaria', 'straordinario', 'giudiziale', 'giudiziaria',
+  'amministrativa', 'amministrativo', 'preferenziale', 'alternativa',
+  'breve', 'cautelare', 'incidentale', 'autonoma', 'diretta',
+  'residuale', 'esclusiva', 'prioritaria', 'telematica', 'informatica',
+  'orale', 'scritta', 'formale', 'informale', 'preliminare',
+  'definitiva', 'provvisoria', 'urgente', 'sommaria',
+  'presentava', 'presentano', 'presenta'
+])
 
 export const REGEX_PATTERNS: RegexPattern[] = [
   { type: 'CODICE_FISCALE', pattern: CODICE_FISCALE, label: 'Codice Fiscale' },
@@ -44,7 +64,9 @@ export const REGEX_PATTERNS: RegexPattern[] = [
   { type: 'EMAIL', pattern: EMAIL, label: 'Email' },
   { type: 'TELEFONO', pattern: TELEFONO, label: 'Telefono' },
   { type: 'DATA_NASCITA', pattern: DATA_NASCITA, label: 'Data di Nascita' },
-  { type: 'INDIRIZZO', pattern: INDIRIZZO_NO_CORSO, label: 'Indirizzo' },
+  { type: 'INDIRIZZO', pattern: INDIRIZZO_VIA, label: 'Indirizzo (via)' },
+  { type: 'INDIRIZZO', pattern: INDIRIZZO_ALTRI, label: 'Indirizzo' },
+  { type: 'INDIRIZZO', pattern: INDIRIZZO_STRADA, label: 'Indirizzo (strada)' },
   { type: 'INDIRIZZO', pattern: INDIRIZZO_CORSO, label: 'Indirizzo (corso)' },
   { type: 'NUMERO_DOCUMENTO', pattern: NUMERO_DOCUMENTO, label: 'Numero Documento' }
 ]
@@ -60,15 +82,21 @@ export function findRegexEntities(text: string): RegexMatch[] {
   const matches: RegexMatch[] = []
 
   for (const { type, pattern } of REGEX_PATTERNS) {
-    // Reset regex state
     const regex = new RegExp(pattern.source, pattern.flags)
     let match: RegExpExecArray | null
 
     while ((match = regex.exec(text)) !== null) {
-      // For DATA_NASCITA, capture only the date part (group 1)
       const matchedText = type === 'DATA_NASCITA' && match[1] ? match[1] : match[0]
+      const trimmed = matchedText.trim()
+
+      // Filter out false-positive "Via" addresses
+      if (type === 'INDIRIZZO' && /^Via\s/i.test(trimmed)) {
+        const afterVia = trimmed.replace(/^Via\s+/i, '').split(/\s/)[0].toLowerCase()
+        if (VIA_BLOCKLIST.has(afterVia)) continue
+      }
+
       matches.push({
-        text: matchedText.trim(),
+        text: trimmed,
         type,
         start: match.index,
         end: match.index + match[0].length

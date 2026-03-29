@@ -71,8 +71,8 @@ function buildItalianMenu(): void {
             dialog.showMessageBox(mainWindow!, {
               type: 'info',
               title: 'Anonimizzatore',
-              message: 'Anonimizzatore v1.0.0',
-              detail: 'Software per la pseudo-anonimizzazione di sentenze e atti legali.\n\nAutore: Avv. Roberto Arcella\n\nQuesta applicazione è un fork del progetto Anonimator dell\'Avv. Filippo Strozzi, realizzata in collaborazione con il Laboratorio Avvocati e Magistrati del Distretto della Corte d\'Appello di Napoli.\n\nUtilizza NER (Named Entity Recognition) e pattern regex per identificare automaticamente dati personali.\n\n100% offline - Conforme al GDPR.'
+              message: 'Anonimizzatore v1.1.0',
+              detail: 'Software per la pseudo-anonimizzazione di sentenze e atti legali.\n\nAutore: Avv. Roberto Arcella\nhttps://github.com/robertoarcella-bot/Anonimizzatore\n\nFork del progetto Anonimator dell\'Avv. Filippo Strozzi\nhttps://github.com/avvocati-e-mac/anonimator\n\nRealizzata in collaborazione con il Laboratorio Avvocati e Magistrati del Distretto della Corte d\'Appello di Napoli.\n\n100% offline - Conforme al GDPR.'
             })
           }
         }

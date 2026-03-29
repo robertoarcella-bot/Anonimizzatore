@@ -165,6 +165,14 @@ export const PAROLE_LEGALI = new Set([
   'cod', 'reg', 'leg', 'cost', 'pen', 'civ',
   'ecc', 'ivi', 'ora', 'poi', 'già', 'pur', 'ben',
   'così', 'però', 'cioè', 'ovvero', 'altresì', 'pertanto',
-  'tuttavia', 'invero', 'laddove', 'qualora', 'sicché'
+  'tuttavia', 'invero', 'laddove', 'qualora', 'sicché',
+  // Common verbs/past participles that get capitalized and cause false positives
+  'ha', 'lasciato', 'infatti', 'era', 'brigato', 'trovato',
+  'detto', 'fatto', 'avuto', 'dato', 'preso', 'messo', 'tenuto',
+  'visto', 'chiesto', 'risposto', 'deciso', 'ritenuto', 'stabilito',
+  'disposto', 'ordinato', 'emesso', 'pronunciato', 'confermato',
+  'accertato', 'contestato', 'eccepito', 'dedotto', 'prodotto',
+  'acquisito', 'depositato', 'notificato', 'comunicato',
+  'comparso', 'costituito', 'intervenuto', 'aderito'
 ])
 

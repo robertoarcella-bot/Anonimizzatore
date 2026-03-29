@@ -95,9 +95,9 @@ Per i documenti PDF, l'output viene **ricostruito completamente da zero**: il te
 
 ## Credits
 
-**Autore**: Avv. Roberto Arcella
+**Autore**: [Avv. Roberto Arcella](https://github.com/robertoarcella-bot/Anonimizzatore)
 
-Questa applicazione è un fork del progetto [Anonimator](https://github.com/avvocati-e-mac/anonimator) dell'Avv. Filippo Strozzi, realizzata in collaborazione con il **Laboratorio Avvocati e Magistrati del Distretto della Corte d'Appello di Napoli**.
+Fork del progetto [Anonimator](https://github.com/avvocati-e-mac/anonimator) dell'Avv. Filippo Strozzi, realizzata in collaborazione con il **Laboratorio Avvocati e Magistrati del Distretto della Corte d'Appello di Napoli**.
 
 ## Licenza
 
