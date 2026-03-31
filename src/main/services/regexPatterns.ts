@@ -52,6 +52,22 @@ const CONTRATTO_PARTE = /\b[Tt]ra\s+([A-ZÀ-Ú][a-zà-ú']{2,}(?:\s+[A-ZÀ-Ú][a
 // "dall'avvocato NOME COGNOME"
 const DALL_AVV = /\b(?:[Dd]all?['']?\s*[Aa]vv\.?(?:ocat[oa])?)\s+([A-ZÀ-Ú][a-zà-ú']{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú']+){0,3}|[A-ZÀ-Ú]{2,}(?:\s+[A-ZÀ-Ú]{2,}){0,3})/g
 
+// Words that truncate a person name capture (verbs, adjectives, prepositions after the name)
+const PERSONA_STOP_WORDS = new Set([
+  'residente', 'domiciliato', 'domiciliata', 'nato', 'nata',
+  'disponeva', 'provvedeva', 'dichiarava', 'comunicava', 'riferiva',
+  'quale', 'quale', 'in', 'presso', 'con', 'per', 'dal', 'dalla',
+  'direttore', 'amministratore', 'legale', 'rappresentante',
+  'ad', 'al', 'alla', 'che', 'il', 'la', 'lo', 'le', 'gli', 'un', 'una',
+  'via', 'piazza', 'viale', 'corso', 'largo'
+])
+
+// Name particles that can appear lowercase inside a name (de, di, del, etc.)
+const NAME_PARTICLES = new Set([
+  'de', 'di', 'del', 'della', 'dello', 'dei', 'degli', 'delle',
+  'da', 'lo', 'la', 'li', 'le', 'al', 'el', 'd', 'l'
+])
+
 // Words that CANNOT follow "Via" in an address
 const VIA_BLOCKLIST = new Set([
   'principale', 'subordinata', 'subordinato', 'equitativa', 'equitativo',
@@ -118,16 +134,40 @@ export function findRegexEntities(text: string): RegexMatch[] {
         if (VIA_BLOCKLIST.has(afterVia)) continue
       }
 
-      // Filter PERSONA matches against PAROLE_LEGALI blocklist
+      // Filter and clean PERSONA matches
       if (type === 'PERSONA') {
-        const words = trimmed.split(/\s+/)
-        // Reject if ALL words are legal terms or too short
-        const allLegal = words.every(w => PAROLE_LEGALI.has(w.toLowerCase()) || w.length < 3)
-        if (allLegal) continue
-        // Reject if the first word is a legal term (e.g. "deduce", "sembra", "presenta")
-        if (words.length === 1 && PAROLE_LEGALI.has(words[0].toLowerCase())) continue
-        // Reject if name doesn't start with uppercase (sanity check after removing 'i' flag)
         if (!/^[A-ZÀ-Ú]/.test(trimmed)) continue
+
+        // Truncate captured name at the first legal/common word
+        // e.g. "Corsiga Carmine residente" → "Corsiga Carmine"
+        // e.g. "Giuseppe Russo disponeva" → "Giuseppe Russo"
+        // e.g. "Lucia Rambone Via Torino" → "Lucia Rambone"
+        const words = trimmed.split(/\s+/)
+        const cleanWords: string[] = []
+        for (const w of words) {
+          const wl = w.toLowerCase()
+          if (PAROLE_LEGALI.has(wl) || PERSONA_STOP_WORDS.has(wl)) break
+          if (w.length < 2) break
+          // Stop at lowercase words that aren't name particles (di, de, del, etc.)
+          if (/^[a-zà-ú]/.test(w) && !NAME_PARTICLES.has(wl)) break
+          cleanWords.push(w)
+        }
+
+        const cleanName = cleanWords.join(' ').trim()
+        if (!cleanName || cleanName.length < 3) continue
+        // Must have at least one word remaining
+        if (cleanWords.length === 0) continue
+        // Single word must not be a legal term
+        if (cleanWords.length === 1 && PAROLE_LEGALI.has(cleanWords[0].toLowerCase())) continue
+
+        // Use the cleaned name instead of the raw match
+        matches.push({
+          text: cleanName,
+          type,
+          start: match.index,
+          end: match.index + match[0].length
+        })
+        continue
       }
 
       // For AVV_LISTA, split comma-separated names into individual entities
