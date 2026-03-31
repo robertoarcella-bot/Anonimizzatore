@@ -1,4 +1,5 @@
 import { EntityType } from '../../shared/types'
+import { PAROLE_LEGALI } from './italianNames'
 
 interface RegexPattern {
   type: EntityType
@@ -26,27 +27,30 @@ const INDIRIZZO_STRADA = /\b(?:strada)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú
 const INDIRIZZO_CORSO = /\b(?:corso)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?/gi
 
 // === LEGAL CONTEXTUAL PATTERNS (person names in legal documents) ===
+// IMPORTANT: These patterns must NOT use the 'i' flag for the captured name part.
+// The name MUST start with an uppercase letter to avoid matching verbs/adjectives
+// like "ricorrente deduce", "ricorrente sembra", etc.
 
-// "ricorrente/resistente/appellante/convenuto NOME COGNOME" or "NOME COGNOME - ricorrente"
-const PROCESSO_PARTE = /\b(?:ricorrente|resistente|appellante|appellat[oa]|convenut[oa]|attor[ei]|attrice|indagat[oa]|imputat[oa]|querelante|querelat[oa]|parte civile|persona offesa)\s+([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,3})/gi
+// "ricorrente/resistente/appellante NOME COGNOME" — name must be capitalized
+const PROCESSO_PARTE = /\b(?:[Rr]icorrente|[Rr]esistente|[Aa]ppellante|[Aa]ppellat[oa]|[Cc]onvenut[oa]|[Aa]ttor[ei]|[Aa]ttrice|[Ii]ndagat[oa]|[Ii]mputat[oa]|[Qq]uerelante|[Qq]uerelat[oa]|[Pp]arte civile|[Pp]ersona offesa)\s+([A-ZÀ-Ú][a-zà-ú']{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú']+){0,3}|[A-ZÀ-Ú]{2,}(?:\s+[A-ZÀ-Ú]{2,}){0,3})/g
 
-// "difeso/rappresentato dall'avv. NOME" or "difesa dall'avvocato NOME COGNOME"
-const DIFENSORE = /\b(?:difes[oa]|rappresentat[oa]|assistit[oa])\s+(?:e\s+(?:difes[oa]|rappresentat[oa])\s+)?(?:dall?['']?\s*)?(?:avv\.?|avvocat[oa])\s+([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,3})/gi
+// "difeso/rappresentato dall'avv. NOME COGNOME"
+const DIFENSORE = /\b(?:[Dd]ifes[oa]|[Rr]appresentat[oa]|[Aa]ssistit[oa])\s+(?:e\s+(?:difes[oa]|rappresentat[oa])\s+)?(?:dall?['']?\s*)?(?:[Aa]vv\.?|[Aa]vvocat[oa])\s+([A-ZÀ-Ú][a-zà-ú']{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú']+){0,3}|[A-ZÀ-Ú]{2,}(?:\s+[A-ZÀ-Ú]{2,}){0,3})/g
 
-// "dagli avvocati NOME, NOME e NOME" — comma/e separated list of lawyers
-const AVV_LISTA = /\b(?:dagli\s+avvocati|degli\s+avv\.?|avv\.?ti)\s+([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,2}(?:\s*,\s*[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,2})*(?:\s+e\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,2})?)/gi
+// "dagli avvocati NOME, NOME e NOME"
+const AVV_LISTA = /\b(?:[Dd]agli\s+avvocati|[Dd]egli\s+avv\.?|[Aa]vv\.?ti)\s+([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,2}(?:\s*,\s*[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,2})*(?:\s+e\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,2})?)/g
 
-// "Firmato Da: NOME COGNOME Emesso Da:" — PKI digital signatures in PDFs
-const PKI_FIRMA = /\bFirmato\s+Da:?\s*([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,3})\s*(?:Emesso|Seriale|Valido)/gi
+// "Firmato Da: NOME COGNOME Emesso"
+const PKI_FIRMA = /\bFirmato\s+Da:?\s*([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,3})\s*(?:Emesso|Seriale|Valido)/g
 
-// "NOME COGNOME – Presidente" / "Presidente: NOME COGNOME" in sentence headers
-const SENTENCE_HEADER = /\b(?:Presidente|Relatore|Consigliere|Giudice|P\.?M\.?|Sostituto):?\s+(?:Dott\.?\s*(?:ssa)?\s*)?([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,3})/gi
+// "Presidente: NOME COGNOME"
+const SENTENCE_HEADER = /\b(?:Presidente|Relatore|Consigliere|Giudice|P\.?M\.?|Sostituto):?\s+(?:[Dd]ott\.?\s*(?:ssa)?\s*)?([A-ZÀ-Ú][a-zà-ú']{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú']+){0,3}|[A-ZÀ-Ú]{2,}(?:\s+[A-ZÀ-Ú]{2,}){0,3})/g
 
-// "tra NOME, nato/residente..." — contract parties
-const CONTRATTO_PARTE = /\btra\s+([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,3})\s*,\s*(?:nat[oa]|residente|con\s+sede|C\.?F\.?|codice\s+fiscale)/gi
+// "tra NOME, nato/residente..."
+const CONTRATTO_PARTE = /\b[Tt]ra\s+([A-ZÀ-Ú][a-zà-ú']{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú']+){0,3}|[A-ZÀ-Ú]{2,}(?:\s+[A-ZÀ-Ú]{2,}){0,3})\s*,\s*(?:nat[oa]|residente|con\s+sede|C\.?F\.?|codice\s+fiscale)/g
 
-// "dall'avvocato NOME COGNOME" — single lawyer
-const DALL_AVV = /\b(?:dall?['']?\s*avv\.?(?:ocat[oa])?)\s+([A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+(?:\s+[A-ZÀ-Ú][A-ZÀ-Úa-zà-ú']+){0,3})/gi
+// "dall'avvocato NOME COGNOME"
+const DALL_AVV = /\b(?:[Dd]all?['']?\s*[Aa]vv\.?(?:ocat[oa])?)\s+([A-ZÀ-Ú][a-zà-ú']{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú']+){0,3}|[A-ZÀ-Ú]{2,}(?:\s+[A-ZÀ-Ú]{2,}){0,3})/g
 
 // Words that CANNOT follow "Via" in an address
 const VIA_BLOCKLIST = new Set([
@@ -114,11 +118,26 @@ export function findRegexEntities(text: string): RegexMatch[] {
         if (VIA_BLOCKLIST.has(afterVia)) continue
       }
 
+      // Filter PERSONA matches against PAROLE_LEGALI blocklist
+      if (type === 'PERSONA') {
+        const words = trimmed.split(/\s+/)
+        // Reject if ALL words are legal terms or too short
+        const allLegal = words.every(w => PAROLE_LEGALI.has(w.toLowerCase()) || w.length < 3)
+        if (allLegal) continue
+        // Reject if the first word is a legal term (e.g. "deduce", "sembra", "presenta")
+        if (words.length === 1 && PAROLE_LEGALI.has(words[0].toLowerCase())) continue
+        // Reject if name doesn't start with uppercase (sanity check after removing 'i' flag)
+        if (!/^[A-ZÀ-Ú]/.test(trimmed)) continue
+      }
+
       // For AVV_LISTA, split comma-separated names into individual entities
       if (pattern === AVV_LISTA && trimmed.includes(',')) {
         const names = trimmed.split(/\s*,\s*|\s+e\s+/).filter(n => n.trim().length > 2)
         for (const name of names) {
-          matches.push({ text: name.trim(), type: 'PERSONA', start: match.index, end: match.index + match[0].length })
+          const n = name.trim()
+          if (/^[A-ZÀ-Ú]/.test(n) && !PAROLE_LEGALI.has(n.toLowerCase())) {
+            matches.push({ text: n, type: 'PERSONA', start: match.index, end: match.index + match[0].length })
+          }
         }
         continue
       }
