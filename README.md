@@ -29,7 +29,7 @@ Identifica automaticamente i dati personali presenti nel documento (nomi, codici
 
 Scarica l'installer dalla sezione [Releases](../../releases):
 
-> **Anonimizzatore Setup 1.1.0.exe**
+> **Anonimizzatore Setup 1.2.0.exe**
 
 Esegui il file e segui la procedura guidata. Verrà creato un collegamento sul desktop e nel menu Start.
 
@@ -37,7 +37,7 @@ Esegui il file e segui la procedura guidata. Verrà creato un collegamento sul d
 
 Scarica il DMG dalla sezione [Releases](../../releases):
 
-> **Anonimizzatore-1.1.0.dmg**
+> **Anonimizzatore-1.2.0.dmg**
 
 Apri il DMG e trascina l'applicazione nella cartella Applicazioni.
 
