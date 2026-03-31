@@ -1,6 +1,6 @@
 {
   "name": "anonimizzatore",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Anonimizzatore di sentenze e atti legali italiani",
   "main": "./out/main/index.js",
   "scripts": {

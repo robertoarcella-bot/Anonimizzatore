@@ -386,23 +386,43 @@ export async function analyzeText(
   }
 
   // Step 2: NER model-based extraction (if model is loaded)
+  // Uses parallel batch processing (4 chunks at a time) and per-type score thresholds
+  const NER_SCORE_THRESHOLDS: Record<string, number> = {
+    'PERSONA': 0.50,
+    'ORGANIZZAZIONE': 0.60,
+    'LUOGO': 0.65
+  }
+  const BATCH_SIZE = 4
+
   if (nerPipeline) {
     onProgress?.({ percent: 30, message: 'Analisi NER in corso...' })
     const chunks = splitIntoChunks(text)
 
-    for (let i = 0; i < chunks.length; i++) {
-      const progress = 30 + (i / chunks.length) * 50
-      onProgress?.({ percent: progress, message: `Analisi NER: ${i + 1}/${chunks.length} blocchi` })
+    // Process chunks in parallel batches of BATCH_SIZE
+    for (let batchStart = 0; batchStart < chunks.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, chunks.length)
+      const batch = chunks.slice(batchStart, batchEnd)
+      const progress = 30 + (batchStart / chunks.length) * 45
+      onProgress?.({ percent: progress, message: `Analisi NER: ${batchStart + 1}-${batchEnd}/${chunks.length} blocchi` })
 
-      try {
-        const results = await nerPipeline(chunks[i], {
-          aggregation_strategy: 'none'
+      // Run batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (chunk) => {
+          try {
+            return await nerPipeline(chunk, { aggregation_strategy: 'none' })
+          } catch {
+            return []
+          }
         })
+      )
 
+      for (const results of batchResults) {
         const merged = mergeNerTokens(results)
 
         for (const entity of merged) {
-          if (entity.score < 0.5) continue
+          // Per-type score threshold
+          const threshold = NER_SCORE_THRESHOLDS[entity.type] || 0.50
+          if (entity.score < threshold) continue
           if (!isValidEntity(entity.text, entity.type)) continue
 
           const key = entity.text.toLowerCase().trim()
@@ -413,8 +433,6 @@ export async function analyzeText(
             entityMap.set(key, { type: entity.type, count: 1, source: 'ner' })
           }
         }
-      } catch (err) {
-        console.error(`Error processing chunk ${i}:`, err)
       }
     }
   } else {
@@ -422,15 +440,20 @@ export async function analyzeText(
   }
 
   // Step 3: Deduplicate
-  onProgress?.({ percent: 85, message: 'Deduplicazione entit\u00e0...' })
+  onProgress?.({ percent: 78, message: 'Deduplicazione entit\u00e0...' })
   const deduped = deduplicateEntities(entityMap)
 
-  // Step 4: Generate pseudonyms and build entity list
+  // Step 4: Co-reference resolution — find standalone surnames for known multi-word names
+  onProgress?.({ percent: 82, message: 'Risoluzione co-referenze...' })
+  expandCoReferences(deduped, text)
+
+  // Step 5: Generate pseudonyms and build entity list
   onProgress?.({ percent: 90, message: 'Generazione pseudonimi...' })
   const entities: Entity[] = []
+  const allCandidateTexts = [...regexMatches.map(m => m.text), ...dictionaryMatches.map(m => m.text)]
 
   for (const [entityText, data] of deduped) {
-    const originalText = findOriginalCase(entityText, regexMatches.map(m => m.text))
+    const originalText = findOriginalCase(entityText, allCandidateTexts)
     const pseudonym = pseudonymGen.generate(originalText, data.type)
 
     entities.push({
@@ -448,6 +471,42 @@ export async function analyzeText(
   onProgress?.({ percent: 100, message: 'Analisi completata' })
 
   return { entities, dictionary: pseudonymGen.getDictionary() }
+}
+
+/**
+ * Co-reference resolution: when "Mario Rossi" is detected, also detect standalone
+ * "Rossi" (surname only) occurrences in the text. This is the most common pattern
+ * in Italian legal documents: full name appears once, then just the surname.
+ * Only adds the surname if it appears 2+ times standalone and is not a legal term.
+ */
+function expandCoReferences(
+  entities: Map<string, { type: EntityType; count: number; source: 'regex' | 'ner' }>,
+  text: string
+): void {
+  const multiWordPersons = Array.from(entities.entries())
+    .filter(([_, data]) => data.type === 'PERSONA')
+    .filter(([key]) => key.includes(' '))
+
+  for (const [fullName, data] of multiWordPersons) {
+    const tokens = fullName.split(/\s+/)
+    for (const token of tokens) {
+      if (token.length <= 3) continue
+      if (STOPWORDS.has(token)) continue
+      if (PAROLE_LEGALI.has(token)) continue
+      if (entities.has(token)) continue // Already detected
+
+      // Count standalone occurrences (word boundary match)
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(`\\b${escaped}\\b`, 'gi')
+      const matches = text.match(regex)
+      const count = matches ? matches.length : 0
+
+      // Only add if appears 2+ times (to avoid false positives on common words)
+      if (count >= 2) {
+        entities.set(token, { type: 'PERSONA', count, source: data.source })
+      }
+    }
+  }
 }
 
 function findOriginalCase(lowerText: string, candidates: string[]): string {
