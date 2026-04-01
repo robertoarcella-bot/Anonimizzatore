@@ -173,6 +173,22 @@ export const PAROLE_LEGALI = new Set([
   'disposto', 'ordinato', 'emesso', 'pronunciato', 'confermato',
   'accertato', 'contestato', 'eccepito', 'dedotto', 'prodotto',
   'acquisito', 'depositato', 'notificato', 'comunicato',
-  'comparso', 'costituito', 'intervenuto', 'aderito'
+  'comparso', 'costituito', 'intervenuto', 'aderito',
+  // Words from real false positives in legal documents
+  'quale', 'amministrativa', 'amministrativo', 'amministrazione',
+  'nulla', 'afferenti', 'provvedeva', 'disponeva', 'nominava',
+  'monocratico', 'giunta', 'regionale', 'nonché', 'nonchè',
+  'residente', 'domiciliato', 'domiciliata', 'elettivamente',
+  'sottoscriveva', 'approvava', 'deliberava', 'trasmetteva',
+  'adottava', 'prorogava', 'conferiva', 'affidava', 'formalizzava',
+  'relazionava', 'veniva', 'riceveva', 'richiedeva', 'prevedeva',
+  'risulta', 'risultato', 'precisamente', 'pertanto', 'invero',
+  'commissario', 'straordinario', 'dirigente', 'direttore',
+  'orientale', 'parthenope', 'federico', 'campania', 'napoli',
+  'azienda', 'aziende', 'ente', 'enti', 'organo', 'organi',
+  'funzione', 'incarico', 'mandato', 'contratto', 'delibera',
+  'trattamento', 'economico', 'retribuzione', 'indennità',
+  'obiettivo', 'obiettivi', 'performance', 'valutazione',
+  'bilancio', 'gestione', 'servizio', 'servizi', 'personale'
 ])
 

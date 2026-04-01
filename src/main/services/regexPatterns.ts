@@ -22,7 +22,8 @@ const NUMERO_DOCUMENTO = /\b(?:C[AI]\d{5}[A-Z]{2}|[A-Z]{2}\d{7}|YA\d{7}|[A-Z]{2}
 // === ADDRESS PATTERNS ===
 
 const INDIRIZZO_VIA = /\bVia\s+(?:del|dello|della|dei|degli|delle|di)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?|\bVia\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?/g
-const INDIRIZZO_ALTRI = /\b(?:viale|piazza|piazzale|largo|vicolo|contrada|località|c\.so|p\.za|p\.le|v\.le)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?/gi
+// NO 'i' flag: name after street type must start with actual uppercase letter
+const INDIRIZZO_ALTRI = /\b(?:[Vv]iale|[Pp]iazza|[Pp]iazzale|[Pp]iazzetta|[Ll]argo|[Vv]icolo|[Cc]ontrada|[Ll]ocalità|c\.so|p\.za|p\.le|v\.le)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?)?/g
 const INDIRIZZO_STRADA = /\b(?:strada)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?/gi
 const INDIRIZZO_CORSO = /\b(?:corso)\s+[A-ZÀ-Ú][a-zà-ú]{2,}(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*\s*,?\s*(?:n\.|n°|nr?\.?|civico)?\s*\d+(?:[/\-]?[A-Za-z])?/gi
 
@@ -54,12 +55,24 @@ const DALL_AVV = /\b(?:[Dd]all?['']?\s*[Aa]vv\.?(?:ocat[oa])?)\s+([A-ZÀ-Ú][a-z
 
 // Words that truncate a person name capture (verbs, adjectives, prepositions after the name)
 const PERSONA_STOP_WORDS = new Set([
+  // Location/residence after name
   'residente', 'domiciliato', 'domiciliata', 'nato', 'nata',
+  'elettivamente', 'domiciliati',
+  // Verbs after name
   'disponeva', 'provvedeva', 'dichiarava', 'comunicava', 'riferiva',
-  'quale', 'quale', 'in', 'presso', 'con', 'per', 'dal', 'dalla',
-  'direttore', 'amministratore', 'legale', 'rappresentante',
+  'nominava', 'approvava', 'deliberava', 'stabiliva', 'sottoscriveva',
+  'trasmetteva', 'adottava', 'prorogava', 'conferiva', 'affidava',
+  'formalizzava', 'relazionava', 'veniva', 'riceveva',
+  // Function/role words
+  'quale', 'direttore', 'amministratore', 'amministrativa', 'amministrativo',
+  'legale', 'rappresentante', 'commissario', 'straordinario',
+  'dirigente', 'presidente', 'consigliere', 'monocratico',
+  // Prepositions/articles
+  'in', 'presso', 'con', 'per', 'dal', 'dalla', 'dello', 'della',
   'ad', 'al', 'alla', 'che', 'il', 'la', 'lo', 'le', 'gli', 'un', 'una',
-  'via', 'piazza', 'viale', 'corso', 'largo'
+  'di', 'del', 'dei', 'su', 'sul', 'nel', 'nella',
+  // Address words (stop extending name into address)
+  'via', 'piazza', 'piazzetta', 'viale', 'corso', 'largo', 'vicolo'
 ])
 
 // Name particles that can appear lowercase inside a name (de, di, del, etc.)
@@ -128,10 +141,21 @@ export function findRegexEntities(text: string): RegexMatch[] {
 
       if (!trimmed) continue
 
-      // Filter out false-positive "Via" addresses
-      if (type === 'INDIRIZZO' && /^Via\s/i.test(trimmed)) {
-        const afterVia = trimmed.replace(/^Via\s+/i, '').split(/\s/)[0].toLowerCase()
-        if (VIA_BLOCKLIST.has(afterVia)) continue
+      // Filter out false-positive addresses
+      if (type === 'INDIRIZZO') {
+        // "Via" + legal word
+        if (/^Via\s/i.test(trimmed)) {
+          const afterVia = trimmed.replace(/^Via\s+/i, '').split(/\s/)[0].toLowerCase()
+          if (VIA_BLOCKLIST.has(afterVia)) continue
+        }
+        // Any street type + common word (not a proper name)
+        const streetMatch = trimmed.match(/^(?:viale|piazza|piazzale|piazzetta|largo|vicolo|contrada|località)\s+(\S+)/i)
+        if (streetMatch) {
+          const afterStreet = streetMatch[1].toLowerCase()
+          if (VIA_BLOCKLIST.has(afterStreet) || PAROLE_LEGALI.has(afterStreet)) continue
+          // Reject if word after street type is lowercase (not a proper name)
+          if (/^[a-zà-ú]/.test(streetMatch[1])) continue
+        }
       }
 
       // Filter and clean PERSONA matches
