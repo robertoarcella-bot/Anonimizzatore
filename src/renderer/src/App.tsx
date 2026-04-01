@@ -71,7 +71,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <ModelStatusBadge />
-            <span className="text-xs text-navy-500 font-mono">v1.3.2</span>
+            <span className="text-xs text-navy-500 font-mono">v1.3.3</span>
           </div>
         </div>
       </header>

@@ -116,27 +116,51 @@ export async function anonymizePdf(
   for (const pd of pageData) {
     const page = newDoc.addPage([pd.width, pd.height])
 
-    for (const frag of pd.fragments) {
-      if (!frag.str) continue
+    // Group fragments by line to recalculate x positions
+    const lines = groupByLine(pd.fragments)
 
-      const font = pickFont(frag, fontRegular, fontBold, fontItalic, fontBoldItalic)
-      const fontSize = Math.max(frag.fontSize, 4)
+    for (const line of lines) {
+      if (line.length === 0) continue
 
-      // Trim trailing spaces from fragments to avoid excessive spacing
-      const text = frag.str.replace(/\s+$/, ' ')
-      if (!text.trim()) continue
+      // First fragment keeps its original x position
+      let currentX = line[0].x
 
-      try {
-        font.widthOfTextAtSize(text, fontSize)
-        page.drawText(text, {
-          x: frag.x,
-          y: frag.y,
-          size: fontSize,
-          font,
-          color: rgb(0, 0, 0)
-        })
-      } catch {
-        drawTextSafe(page, frag.x, frag.y, text, font, fontRegular, fontSize)
+      for (let i = 0; i < line.length; i++) {
+        const frag = line[i]
+        if (!frag.str) continue
+
+        const font = pickFont(frag, fontRegular, fontBold, fontItalic, fontBoldItalic)
+        const fontSize = Math.max(frag.fontSize, 4)
+        const text = frag.str.replace(/\s+$/, ' ')
+        if (!text.trim()) {
+          // Empty fragment — advance by a space width
+          try { currentX += font.widthOfTextAtSize(' ', fontSize) } catch { currentX += fontSize * 0.3 }
+          continue
+        }
+
+        // Use original x for first fragment, recalculated x for subsequent ones
+        const drawX = (i === 0) ? frag.x : currentX
+
+        try {
+          font.widthOfTextAtSize(text, fontSize)
+          page.drawText(text, {
+            x: drawX,
+            y: frag.y,
+            size: fontSize,
+            font,
+            color: rgb(0, 0, 0)
+          })
+          // Advance currentX by the actual width of the text in Helvetica
+          currentX = drawX + font.widthOfTextAtSize(text, fontSize)
+        } catch {
+          drawTextSafe(page, drawX, frag.y, text, font, fontRegular, fontSize)
+          currentX = drawX + text.length * fontSize * 0.5
+        }
+
+        // If original fragment had trailing space, add a small gap
+        if (frag.str.endsWith(' ')) {
+          try { currentX += font.widthOfTextAtSize(' ', fontSize) } catch { currentX += fontSize * 0.25 }
+        }
       }
     }
   }
