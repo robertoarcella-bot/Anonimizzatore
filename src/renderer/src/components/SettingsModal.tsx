@@ -79,9 +79,10 @@ export default function SettingsModal({ onClose }: Props) {
         <div className="px-6 py-5 space-y-5">
           <Section title="Modalit&agrave; avanzata NER">
             <p className="text-sm text-navy-300 leading-relaxed mb-4">
-              Attiva un terzo modello NER pi&ugrave; potente
-              (<code className="text-accent-300 text-xs">Xenova/bert-large-NER</code>) che si aggiunge ai due
-              modelli base per migliorare il riconoscimento di nomi, organizzazioni e luoghi.
+              Attiva un terzo modello NER multilingue
+              (<code className="text-accent-300 text-xs">distilbert-base-multilingual-cased-ner-hrl</code>)
+              che si aggiunge ai due modelli base per migliorare il riconoscimento delle entit&agrave; in
+              documenti misti (italiano + altre lingue) e aumentare la confidenza tramite consenso a tre vie.
             </p>
 
             <div className="bg-navy-800/60 rounded-lg p-4 mb-4 border border-navy-700/30">
@@ -91,9 +92,10 @@ export default function SettingsModal({ onClose }: Props) {
                 </svg>
                 <div className="text-xs text-navy-300 leading-relaxed">
                   <strong className="text-amber-300">Attenzione</strong>: il modello richiede uno scaricamento
-                  iniziale di <strong className="text-white">~1.3 GB</strong> (una sola volta) e
+                  iniziale di <strong className="text-white">~270 MB</strong> (una sola volta) e
                   utilizza pi&ugrave; memoria RAM durante l'analisi.
-                  <br />Lo scaricamento avviene una sola volta e viene riutilizzato in seguito.
+                  <br />Supporta 10 lingue (italiano, inglese, francese, tedesco, spagnolo, portoghese,
+                  arabo, hausa, igbo, yoruba). Lo scaricamento viene riutilizzato in seguito.
                 </div>
               </div>
             </div>

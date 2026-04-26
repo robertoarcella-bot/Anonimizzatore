@@ -11,7 +11,8 @@ import { existsSync, mkdirSync } from 'fs'
 // We use up to THREE complementary NER models:
 // 1. Xenova/bert-base-NER: multilingual, generic PER/ORG/LOC (~65MB) — always on
 // 2. Laibniz/italian-ner-pii-browser-distilbert: Italian-specific (~67MB) — always on
-// 3. Xenova/bert-large-NER: large NER (~1.3GB) — optional "advanced mode"
+// 3. Xenova/distilbert-base-multilingual-cased-ner-hrl: multilingual NER 10 languages (~270MB)
+//    — optional "advanced mode" — Davlan family, trained on HRL multilingual NER dataset
 let nerPipelineMultilang: any = null
 let nerPipelineItalian: any = null
 let nerPipelineAdvanced: any = null
@@ -22,7 +23,7 @@ let advancedError: string | null = null
 
 const MODEL_MULTILANG = 'Xenova/bert-base-NER'
 const MODEL_ITALIAN = 'Laibniz/italian-ner-pii-browser-distilbert'
-const MODEL_ADVANCED = 'Xenova/bert-large-NER'
+const MODEL_ADVANCED = 'Xenova/distilbert-base-multilingual-cased-ner-hrl'
 
 function getModelCacheDir(): string {
   const dir = join(app.getPath('userData'), 'models')
