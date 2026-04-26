@@ -7,13 +7,17 @@ import { app } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 
-// Transformers.js pipeline - loaded lazily
-let nerPipeline: any = null
+// Transformers.js pipelines - loaded lazily
+// We use TWO complementary NER models:
+// 1. Xenova/bert-base-NER: multilingual, generic PER/ORG/LOC
+// 2. Laibniz/italian-ner-pii-browser-distilbert: Italian-specific (used by Anonimator)
+let nerPipelineMultilang: any = null
+let nerPipelineItalian: any = null
 let pipelineLoading = false
 let pipelineError: string | null = null
 
-// Use a well-known multilingual NER model that works with ONNX WASM
-const MODEL_ID = 'Xenova/bert-base-NER'
+const MODEL_MULTILANG = 'Xenova/bert-base-NER'
+const MODEL_ITALIAN = 'Laibniz/italian-ner-pii-browser-distilbert'
 
 function getModelCacheDir(): string {
   const dir = join(app.getPath('userData'), 'models')
@@ -68,55 +72,74 @@ export async function isModelDownloaded(): Promise<boolean> {
 export async function loadNerPipeline(
   onProgress?: (progress: { percent: number; message: string }) => void
 ): Promise<void> {
-  if (nerPipeline) return
+  if (nerPipelineMultilang && nerPipelineItalian) return
   if (pipelineLoading) return
   pipelineLoading = true
   pipelineError = null
 
   try {
-    onProgress?.({ percent: 5, message: 'Inizializzazione Transformers.js...' })
+    onProgress?.({ percent: 2, message: 'Inizializzazione Transformers.js...' })
 
-    // Use Function constructor to create a dynamic import that the bundler won't process
-    // This ensures @xenova/transformers loads from node_modules at runtime with native ONNX bindings
     const dynamicImport = new Function('moduleName', 'return import(moduleName)')
     const transformers = await dynamicImport('@xenova/transformers')
     const { pipeline, env } = transformers
 
-    // Set cache dir for model downloads
     env.cacheDir = getModelCacheDir()
     env.allowLocalModels = true
     env.allowRemoteModels = true
 
-    onProgress?.({ percent: 10, message: 'Scaricamento modello NER...' })
+    // === Load Model 1: Multilingual BERT NER ===
+    if (!nerPipelineMultilang) {
+      onProgress?.({ percent: 5, message: 'Caricamento modello NER multilingue (1/2)...' })
+      nerPipelineMultilang = await pipeline('token-classification', MODEL_MULTILANG, {
+        quantized: true,
+        progress_callback: (data: any) => {
+          if (data.status === 'progress' && data.progress) {
+            onProgress?.({
+              percent: Math.min(5 + data.progress * 0.45, 50),
+              message: `Modello multilingue: ${Math.round(data.progress)}%`
+            })
+          }
+        }
+      })
+    }
 
-    nerPipeline = await pipeline('token-classification', MODEL_ID, {
-      quantized: true,
-      progress_callback: (data: any) => {
-        if (data.status === 'progress' && data.progress) {
-          onProgress?.({
-            percent: Math.min(10 + data.progress * 0.85, 98),
-            message: `Scaricamento modello: ${Math.round(data.progress)}%`
-          })
-        }
-        if (data.status === 'ready') {
-          onProgress?.({ percent: 99, message: 'Modello caricato, inizializzazione...' })
-        }
+    // === Load Model 2: Italian-specific DistilBERT NER ===
+    if (!nerPipelineItalian) {
+      onProgress?.({ percent: 50, message: 'Caricamento modello NER italiano (2/2)...' })
+      try {
+        nerPipelineItalian = await pipeline('token-classification', MODEL_ITALIAN, {
+          quantized: true,
+          progress_callback: (data: any) => {
+            if (data.status === 'progress' && data.progress) {
+              onProgress?.({
+                percent: Math.min(50 + data.progress * 0.45, 95),
+                message: `Modello italiano: ${Math.round(data.progress)}%`
+              })
+            }
+          }
+        })
+      } catch (e: any) {
+        // If Italian model fails to load, continue with only multilingual
+        console.warn('Italian NER model failed to load, continuing with multilingual only:', e.message)
+        nerPipelineItalian = null
       }
-    })
+    }
 
     pipelineLoading = false
-    onProgress?.({ percent: 100, message: 'Modello NER pronto' })
+    const status = nerPipelineItalian ? 'NER pronto (multilingue + italiano)' : 'NER pronto (solo multilingue)'
+    onProgress?.({ percent: 100, message: status })
   } catch (error: any) {
     pipelineLoading = false
     pipelineError = error.message
-    console.error('Failed to load NER pipeline:', error)
+    console.error('Failed to load NER pipelines:', error)
     throw error
   }
 }
 
 export function getNerStatus(): { ready: boolean; loading: boolean; error: string | null } {
   return {
-    ready: nerPipeline !== null,
+    ready: nerPipelineMultilang !== null,
     loading: pipelineLoading,
     error: pipelineError
   }
@@ -178,6 +201,27 @@ function mergeNerTokens(
 
   if (current) merged.push(current)
   return merged
+}
+
+/**
+ * Apply per-type threshold and validity check, then add to entity map
+ */
+function processNerEntity(
+  entity: { text: string; type: EntityType; score: number },
+  entityMap: Map<string, { type: EntityType; count: number; source: 'regex' | 'ner' }>,
+  thresholds: Record<string, number>
+): void {
+  const threshold = thresholds[entity.type] || 0.50
+  if (entity.score < threshold) return
+  if (!isValidEntity(entity.text, entity.type)) return
+
+  const key = entity.text.toLowerCase().trim()
+  const existing = entityMap.get(key)
+  if (existing) {
+    existing.count++
+  } else {
+    entityMap.set(key, { type: entity.type, count: 1, source: 'ner' })
+  }
 }
 
 function isValidEntity(text: string, type: EntityType): boolean {
@@ -394,43 +438,53 @@ export async function analyzeText(
   }
   const BATCH_SIZE = 4
 
-  if (nerPipeline) {
-    onProgress?.({ percent: 30, message: 'Analisi NER in corso...' })
+  if (nerPipelineMultilang) {
+    onProgress?.({ percent: 30, message: 'Analisi NER in corso (dual-model)...' })
     const chunks = splitIntoChunks(text)
 
-    // Process chunks in parallel batches of BATCH_SIZE
+    // Process chunks in parallel batches with BOTH models
     for (let batchStart = 0; batchStart < chunks.length; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, chunks.length)
       const batch = chunks.slice(batchStart, batchEnd)
       const progress = 30 + (batchStart / chunks.length) * 45
       onProgress?.({ percent: progress, message: `Analisi NER: ${batchStart + 1}-${batchEnd}/${chunks.length} blocchi` })
 
-      // Run batch in parallel
+      // Run both models on each chunk in parallel
       const batchResults = await Promise.all(
         batch.map(async (chunk) => {
-          try {
-            return await nerPipeline(chunk, { aggregation_strategy: 'none' })
-          } catch {
-            return []
-          }
+          const [resultsMulti, resultsItalian] = await Promise.all([
+            nerPipelineMultilang(chunk, { aggregation_strategy: 'none' }).catch(() => []),
+            nerPipelineItalian
+              ? nerPipelineItalian(chunk, { aggregation_strategy: 'none' }).catch(() => [])
+              : Promise.resolve([])
+          ])
+          return { multi: resultsMulti, italian: resultsItalian }
         })
       )
 
-      for (const results of batchResults) {
-        const merged = mergeNerTokens(results)
+      // Merge results from both models per chunk with confidence boost when both agree
+      for (const { multi, italian } of batchResults) {
+        const mergedMulti = mergeNerTokens(multi)
+        const mergedItalian = mergeNerTokens(italian)
 
-        for (const entity of merged) {
-          // Per-type score threshold
-          const threshold = NER_SCORE_THRESHOLDS[entity.type] || 0.50
-          if (entity.score < threshold) continue
-          if (!isValidEntity(entity.text, entity.type)) continue
+        // Build a set of (key, type) pairs from each model
+        const italianSet = new Set(mergedItalian.map(e => `${e.text.toLowerCase().trim()}|${e.type}`))
 
-          const key = entity.text.toLowerCase().trim()
-          const existing = entityMap.get(key)
-          if (existing) {
-            existing.count++
-          } else {
-            entityMap.set(key, { type: entity.type, count: 1, source: 'ner' })
+        // Boost score for entities found by BOTH models
+        for (const entity of mergedMulti) {
+          const key = `${entity.text.toLowerCase().trim()}|${entity.type}`
+          if (italianSet.has(key)) {
+            entity.score = Math.min(entity.score * 1.3, 0.99)
+          }
+          processNerEntity(entity, entityMap, NER_SCORE_THRESHOLDS)
+        }
+
+        // Add Italian-only entities (not already from multilang)
+        const multiSet = new Set(mergedMulti.map(e => `${e.text.toLowerCase().trim()}|${e.type}`))
+        for (const entity of mergedItalian) {
+          const key = `${entity.text.toLowerCase().trim()}|${entity.type}`
+          if (!multiSet.has(key)) {
+            processNerEntity(entity, entityMap, NER_SCORE_THRESHOLDS)
           }
         }
       }
