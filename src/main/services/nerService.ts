@@ -8,16 +8,21 @@ import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 
 // Transformers.js pipelines - loaded lazily
-// We use TWO complementary NER models:
-// 1. Xenova/bert-base-NER: multilingual, generic PER/ORG/LOC
-// 2. Laibniz/italian-ner-pii-browser-distilbert: Italian-specific (used by Anonimator)
+// We use up to THREE complementary NER models:
+// 1. Xenova/bert-base-NER: multilingual, generic PER/ORG/LOC (~65MB) — always on
+// 2. Laibniz/italian-ner-pii-browser-distilbert: Italian-specific (~67MB) — always on
+// 3. Xenova/bert-large-NER: large NER (~1.3GB) — optional "advanced mode"
 let nerPipelineMultilang: any = null
 let nerPipelineItalian: any = null
+let nerPipelineAdvanced: any = null
 let pipelineLoading = false
 let pipelineError: string | null = null
+let advancedLoading = false
+let advancedError: string | null = null
 
 const MODEL_MULTILANG = 'Xenova/bert-base-NER'
 const MODEL_ITALIAN = 'Laibniz/italian-ner-pii-browser-distilbert'
+const MODEL_ADVANCED = 'Xenova/bert-large-NER'
 
 function getModelCacheDir(): string {
   const dir = join(app.getPath('userData'), 'models')
@@ -143,6 +148,75 @@ export function getNerStatus(): { ready: boolean; loading: boolean; error: strin
     loading: pipelineLoading,
     error: pipelineError
   }
+}
+
+export function getAdvancedNerStatus(): {
+  ready: boolean
+  loading: boolean
+  error: string | null
+} {
+  return {
+    ready: nerPipelineAdvanced !== null,
+    loading: advancedLoading,
+    error: advancedError
+  }
+}
+
+/**
+ * Load the advanced (large) NER model. Triggered by user via Settings UI.
+ * This is a ~1.3 GB download, runs once. Called on demand.
+ */
+export async function loadAdvancedNer(
+  onProgress?: (progress: { percent: number; message: string }) => void
+): Promise<void> {
+  if (nerPipelineAdvanced) {
+    onProgress?.({ percent: 100, message: 'Modello avanzato già caricato' })
+    return
+  }
+  if (advancedLoading) return
+  advancedLoading = true
+  advancedError = null
+
+  try {
+    onProgress?.({ percent: 2, message: 'Inizializzazione modello avanzato...' })
+
+    const dynamicImport = new Function('moduleName', 'return import(moduleName)')
+    const transformers = await dynamicImport('@xenova/transformers')
+    const { pipeline, env } = transformers
+
+    env.cacheDir = getModelCacheDir()
+    env.allowLocalModels = true
+    env.allowRemoteModels = true
+
+    nerPipelineAdvanced = await pipeline('token-classification', MODEL_ADVANCED, {
+      quantized: true,
+      progress_callback: (data: any) => {
+        if (data.status === 'progress' && data.progress) {
+          onProgress?.({
+            percent: Math.min(2 + data.progress * 0.95, 98),
+            message: `Scaricamento modello avanzato: ${Math.round(data.progress)}%`
+          })
+        }
+      }
+    })
+
+    advancedLoading = false
+    onProgress?.({ percent: 100, message: 'Modello avanzato pronto' })
+  } catch (error: any) {
+    advancedLoading = false
+    advancedError = error.message
+    nerPipelineAdvanced = null
+    console.error('Failed to load advanced NER pipeline:', error)
+    throw error
+  }
+}
+
+/**
+ * Unload the advanced model from memory (the cached ONNX file remains on disk).
+ */
+export function unloadAdvancedNer(): void {
+  nerPipelineAdvanced = null
+  advancedError = null
 }
 
 // Split text into manageable chunks for the model
@@ -449,32 +523,41 @@ export async function analyzeText(
       const progress = 30 + (batchStart / chunks.length) * 45
       onProgress?.({ percent: progress, message: `Analisi NER: ${batchStart + 1}-${batchEnd}/${chunks.length} blocchi` })
 
-      // Run both models on each chunk in parallel
+      // Run all available models on each chunk in parallel (2 or 3)
       const batchResults = await Promise.all(
         batch.map(async (chunk) => {
-          const [resultsMulti, resultsItalian] = await Promise.all([
+          const [resultsMulti, resultsItalian, resultsAdvanced] = await Promise.all([
             nerPipelineMultilang(chunk, { aggregation_strategy: 'none' }).catch(() => []),
             nerPipelineItalian
               ? nerPipelineItalian(chunk, { aggregation_strategy: 'none' }).catch(() => [])
+              : Promise.resolve([]),
+            nerPipelineAdvanced
+              ? nerPipelineAdvanced(chunk, { aggregation_strategy: 'none' }).catch(() => [])
               : Promise.resolve([])
           ])
-          return { multi: resultsMulti, italian: resultsItalian }
+          return { multi: resultsMulti, italian: resultsItalian, advanced: resultsAdvanced }
         })
       )
 
-      // Merge results from both models per chunk with confidence boost when both agree
-      for (const { multi, italian } of batchResults) {
+      // Merge results from all models with confidence boost based on consensus
+      for (const { multi, italian, advanced } of batchResults) {
         const mergedMulti = mergeNerTokens(multi)
         const mergedItalian = mergeNerTokens(italian)
+        const mergedAdvanced = mergeNerTokens(advanced)
 
-        // Build a set of (key, type) pairs from each model
         const italianSet = new Set(mergedItalian.map(e => `${e.text.toLowerCase().trim()}|${e.type}`))
+        const advancedSet = new Set(mergedAdvanced.map(e => `${e.text.toLowerCase().trim()}|${e.type}`))
 
-        // Boost score for entities found by BOTH models
+        // Process multilang entities with boost based on consensus
         for (const entity of mergedMulti) {
           const key = `${entity.text.toLowerCase().trim()}|${entity.type}`
-          if (italianSet.has(key)) {
-            entity.score = Math.min(entity.score * 1.3, 0.99)
+          let agreement = 0
+          if (italianSet.has(key)) agreement++
+          if (advancedSet.has(key)) agreement++
+          if (agreement === 2) {
+            entity.score = Math.min(entity.score * 1.5, 0.99) // 3-way consensus
+          } else if (agreement === 1) {
+            entity.score = Math.min(entity.score * 1.3, 0.99) // 2-way consensus
           }
           processNerEntity(entity, entityMap, NER_SCORE_THRESHOLDS)
         }
@@ -484,6 +567,18 @@ export async function analyzeText(
         for (const entity of mergedItalian) {
           const key = `${entity.text.toLowerCase().trim()}|${entity.type}`
           if (!multiSet.has(key)) {
+            // Boost if also confirmed by advanced model
+            if (advancedSet.has(key)) {
+              entity.score = Math.min(entity.score * 1.3, 0.99)
+            }
+            processNerEntity(entity, entityMap, NER_SCORE_THRESHOLDS)
+          }
+        }
+
+        // Add advanced-only entities (not already from multilang or italian)
+        for (const entity of mergedAdvanced) {
+          const key = `${entity.text.toLowerCase().trim()}|${entity.type}`
+          if (!multiSet.has(key) && !italianSet.has(key)) {
             processNerEntity(entity, entityMap, NER_SCORE_THRESHOLDS)
           }
         }

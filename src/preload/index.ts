@@ -29,6 +29,14 @@ const api = {
     const handler = () => callback()
     ipcRenderer.on('show-guide', handler)
     return () => ipcRenderer.removeListener('show-guide', handler)
+  },
+  getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS),
+  getAdvancedStatus: () => ipcRenderer.invoke(IPC_CHANNELS.GET_ADVANCED_STATUS),
+  setAdvancedMode: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS.SET_ADVANCED_MODE, enabled),
+  onAdvancedProgress: (callback: (progress: { percent: number; message: string }) => void) => {
+    const handler = (_event: any, progress: any) => callback(progress)
+    ipcRenderer.on('advanced-progress', handler)
+    return () => ipcRenderer.removeListener('advanced-progress', handler)
   }
 }
 

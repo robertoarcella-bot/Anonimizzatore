@@ -2,7 +2,15 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { IPC_CHANNELS, Entity } from '../shared/types'
 import { parseDocument } from './parsers'
 import { anonymizeDocument } from './outputGenerators'
-import { analyzeText, loadNerPipeline, isModelDownloaded } from './services/nerService'
+import {
+  analyzeText,
+  loadNerPipeline,
+  isModelDownloaded,
+  loadAdvancedNer,
+  unloadAdvancedNer,
+  getAdvancedNerStatus
+} from './services/nerService'
+import { loadSettings, saveSettings } from './services/settingsManager'
 import { writeFileSync, readFileSync } from 'fs'
 import { dirname } from 'path'
 
@@ -133,5 +141,35 @@ export function registerIpcHandlers(): void {
 
     const content = readFileSync(result.filePaths[0], 'utf-8')
     return JSON.parse(content)
+  })
+
+  // === Settings & Advanced NER ===
+  ipcMain.handle(IPC_CHANNELS.GET_SETTINGS, async () => {
+    return loadSettings()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.GET_ADVANCED_STATUS, async () => {
+    return getAdvancedNerStatus()
+  })
+
+  // Enable/disable the advanced NER model.
+  // Sends 'advanced-progress' updates during download.
+  ipcMain.handle(IPC_CHANNELS.SET_ADVANCED_MODE, async (_event, enabled: boolean) => {
+    saveSettings({ advancedMode: enabled })
+
+    if (enabled) {
+      try {
+        await loadAdvancedNer((progress) => {
+          const win = BrowserWindow.getAllWindows()[0]
+          if (win) win.webContents.send('advanced-progress', progress)
+        })
+        return { success: true, ...getAdvancedNerStatus() }
+      } catch (error: any) {
+        return { success: false, error: error.message, ...getAdvancedNerStatus() }
+      }
+    } else {
+      unloadAdvancedNer()
+      return { success: true, ...getAdvancedNerStatus() }
+    }
   })
 }

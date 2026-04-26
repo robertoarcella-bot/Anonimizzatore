@@ -68,5 +68,8 @@ export const IPC_CHANNELS = {
   IMPORT_DICTIONARY: 'import-dictionary',
   SELECT_FILE: 'select-file',
   SELECT_OUTPUT_DIR: 'select-output-dir',
-  GET_FILE_DIR: 'get-file-dir'
+  GET_FILE_DIR: 'get-file-dir',
+  GET_SETTINGS: 'get-settings',
+  SET_ADVANCED_MODE: 'set-advanced-mode',
+  GET_ADVANCED_STATUS: 'get-advanced-status'
 } as const
