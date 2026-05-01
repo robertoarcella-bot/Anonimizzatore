@@ -2,6 +2,7 @@ import { Entity, EntityType } from '../../shared/types'
 import { findRegexEntities } from './regexPatterns'
 import { PseudonymGenerator } from './pseudonymGenerator'
 import { NOMI_ITALIANI, COGNOMI_ITALIANI, PREFISSI_NOME, PAROLE_LEGALI } from './italianNames'
+import { COGNOMI_ESTESI } from './cognomiEstesi'
 import { v4 as uuidv4 } from 'uuid'
 import { app } from 'electron'
 import { join } from 'path'
@@ -422,6 +423,54 @@ function findItalianNames(text: string): Array<{ text: string; type: EntityType;
     }
     if (COGNOMI_ITALIANI.has(w1.toLowerCase()) && NOMI_ITALIANI.has(w2.toLowerCase())) {
       addMatch(`${w1} ${w2}`)
+    }
+  }
+
+  // === STRATEGY 5: Extended surname dictionary with contextual coupling ===
+  // Uses the ~21K Italian surname dataset, but ONLY when the surname is paired
+  // (adjacent OR elsewhere in the document) with a known first name from NOMI_ITALIANI.
+  // This guards against false positives on common-noun surnames (Costa, Forte, ecc.).
+  // Capitalization requirement: surname must be Title Case or ALL CAPS — already
+  // enforced by the regex \b[A-ZÀ-Ú]... patterns.
+  //
+  // Phase A: collect candidate surnames that pair adjacently with a known name.
+  const adjacentSurnames = new Map<string, string>()  // lowercase surname -> original-cased pairing text
+  const adjPattern = /\b([A-ZÀ-Ú][a-zà-úA-ZÀ-Ú']{2,})\s+([A-ZÀ-Ú][a-zà-úA-ZÀ-Ú']{2,})\b/g
+  while ((match = adjPattern.exec(text)) !== null) {
+    const w1 = match[1], w2 = match[2]
+    const w1l = w1.toLowerCase(), w2l = w2.toLowerCase()
+    if (isLegalWord(w1) || isLegalWord(w2)) continue
+    // Pattern: NOME + cognome_esteso  (and not already in core dictionaries — those
+    // were handled by Strategy 4)
+    if (NOMI_ITALIANI.has(w1l) && COGNOMI_ESTESI.has(w2l) && !COGNOMI_ITALIANI.has(w2l)) {
+      adjacentSurnames.set(w2l, w2)
+      addMatch(`${w1} ${w2}`)
+    }
+    // Pattern: cognome_esteso + NOME
+    if (COGNOMI_ESTESI.has(w1l) && !COGNOMI_ITALIANI.has(w1l) && NOMI_ITALIANI.has(w2l)) {
+      adjacentSurnames.set(w1l, w1)
+      addMatch(`${w1} ${w2}`)
+    }
+  }
+
+  // Phase B: for surnames already validated by an adjacent name pairing,
+  // also flag isolated occurrences of the same surname elsewhere in the document
+  // (capitalized: Title Case or ALL CAPS).
+  for (const [surnameLower] of adjacentSurnames) {
+    const escaped = surnameLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const isolatedRe = new RegExp(`\\b(${escaped})\\b`, 'gi')
+    let m: RegExpExecArray | null
+    while ((m = isolatedRe.exec(text)) !== null) {
+      const occurrence = m[1]
+      // Must be capitalized (Title Case or ALL CAPS)
+      if (!/^[A-ZÀ-Ú]/.test(occurrence)) continue
+      if (isLegalWord(occurrence)) continue
+      // Use the canonical Title Case form for consistent pseudonym mapping
+      const canonical =
+        occurrence === occurrence.toUpperCase()
+          ? occurrence  // preserve ALL CAPS
+          : occurrence[0].toUpperCase() + occurrence.slice(1).toLowerCase()
+      addMatch(canonical)
     }
   }
 

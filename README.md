@@ -12,7 +12,7 @@ Identifica automaticamente i dati personali presenti nel documento (nomi, codici
 
 - **Riconoscimento automatico delle entità (NER)** tramite tre livelli di analisi:
   - Pattern regex per codici fiscali, P.IVA, IBAN, email, telefoni, indirizzi, date
-  - Dizionario di oltre 400 nomi e cognomi italiani con riconoscimento contestuale
+  - Dizionario di oltre 400 nomi e cognomi italiani con riconoscimento contestuale + dizionario esteso di ~21.000 cognomi italiani (attivato solo con accoppiamento contestuale a un nome noto, per evitare falsi positivi)
   - Modello AI (DistilBERT via Transformers.js) per persone, organizzazioni e luoghi
 - **Pseudonimi chiaramente identificabili**: `[PERSONA_1]`, `[ORG_2]`, `[CF_3]` — impossibili da confondere con dati reali
 - **Formati supportati**: PDF, DOCX, TXT, MD

@@ -4,3 +4,4 @@ dist/
 *.log
 .DS_Store
 macos-installer.zip
+cognomi_raw.txt
