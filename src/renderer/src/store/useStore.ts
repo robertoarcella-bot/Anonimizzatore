@@ -30,6 +30,8 @@ interface AppState {
   setOutputDir: (dir: string | null) => void
   outputPath: string | null
   setOutputPath: (path: string | null) => void
+  markdownPath: string | null
+  setMarkdownPath: (path: string | null) => void
 
   // Stats
   replacementCount: number
@@ -85,6 +87,8 @@ export const useStore = create<AppState>((set) => ({
   setOutputDir: (outputDir) => set({ outputDir }),
   outputPath: null,
   setOutputPath: (outputPath) => set({ outputPath }),
+  markdownPath: null,
+  setMarkdownPath: (markdownPath) => set({ markdownPath }),
 
   replacementCount: 0,
   setReplacementCount: (replacementCount) => set({ replacementCount }),
@@ -108,6 +112,7 @@ export const useStore = create<AppState>((set) => ({
       progress: null,
       outputDir: null,
       outputPath: null,
+      markdownPath: null,
       replacementCount: 0,
       error: null
     })

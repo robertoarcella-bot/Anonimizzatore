@@ -42,10 +42,11 @@ export function registerIpcHandlers(): void {
     const result = await dialog.showOpenDialog({
       title: 'Seleziona documento',
       filters: [
-        { name: 'Documenti', extensions: ['pdf', 'docx', 'txt'] },
+        { name: 'Documenti', extensions: ['pdf', 'docx', 'txt', 'md'] },
         { name: 'PDF', extensions: ['pdf'] },
         { name: 'Word', extensions: ['docx'] },
-        { name: 'Testo', extensions: ['txt'] }
+        { name: 'Testo', extensions: ['txt'] },
+        { name: 'Markdown', extensions: ['md'] }
       ],
       properties: ['openFile']
     })
@@ -94,15 +95,22 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  // Anonymize a document
+  // Anonymize a document — produces BOTH the primary format (PDF/DOCX/TXT) AND a Markdown export
   ipcMain.handle(
     IPC_CHANNELS.ANONYMIZE_DOCUMENT,
     async (_event, filePath: string, entities: Entity[], outputDir: string) => {
       try {
         sendProgress({ percent: 0, message: 'Anonimizzazione in corso...' })
-        const outputPath = await anonymizeDocument(filePath, entities, outputDir)
+        const result = await anonymizeDocument(filePath, entities, outputDir)
         sendProgress({ percent: 100, message: 'Anonimizzazione completata' })
-        return { success: true, data: { outputPath } }
+        return {
+          success: true,
+          data: {
+            outputPath: result.primary,    // backward compat: still expose 'outputPath'
+            primaryPath: result.primary,
+            markdownPath: result.markdown
+          }
+        }
       } catch (error: any) {
         return { success: false, error: error.message }
       }

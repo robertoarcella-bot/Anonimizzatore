@@ -52,7 +52,7 @@ export default function WelcomeScreen() {
             </svg>
           </div>
           <h3 className="font-semibold text-navy-100 mb-1 text-sm">Multi-formato</h3>
-          <p className="text-xs text-navy-400 leading-relaxed">Supporta PDF, DOCX e file di testo.</p>
+          <p className="text-xs text-navy-400 leading-relaxed">Supporta PDF, DOCX, TXT e Markdown.</p>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import { DocumentInfo } from '../../shared/types'
 import { parsePdf } from './pdfParser'
 import { parseDocx } from './docxParser'
 import { parseTxt } from './txtParser'
+import { parseMd } from './mdParser'
 import { extname } from 'path'
 
 export async function parseDocument(filePath: string): Promise<DocumentInfo> {
@@ -14,6 +15,8 @@ export async function parseDocument(filePath: string): Promise<DocumentInfo> {
       return parseDocx(filePath)
     case '.txt':
       return parseTxt(filePath)
+    case '.md':
+      return parseMd(filePath)
     default:
       throw new Error(`Formato file non supportato: ${ext}`)
   }

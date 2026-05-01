@@ -27,7 +27,7 @@ export interface Entity {
 export interface DocumentInfo {
   filePath: string
   fileName: string
-  fileType: 'pdf' | 'docx' | 'txt'
+  fileType: 'pdf' | 'docx' | 'txt' | 'md'
   pageCount?: number
   textContent: string
 }

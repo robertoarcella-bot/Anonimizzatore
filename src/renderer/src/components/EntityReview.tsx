@@ -36,7 +36,7 @@ export default function EntityReview() {
   const {
     entities, updateEntity, removeEntity,
     document, dictionary, setScreen, setError,
-    setOutputPath, setReplacementCount,
+    setOutputPath, setMarkdownPath, setReplacementCount,
     outputDir, setOutputDir
   } = useStore()
   const [showAddModal, setShowAddModal] = useState(false)
@@ -80,7 +80,8 @@ export default function EntityReview() {
       )
 
       if (result.success) {
-        setOutputPath(result.data.outputPath)
+        setOutputPath(result.data.primaryPath || result.data.outputPath)
+        setMarkdownPath(result.data.markdownPath || null)
         setReplacementCount(confirmedCount)
         setScreen('success')
       } else {

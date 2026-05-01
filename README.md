@@ -15,7 +15,7 @@ Identifica automaticamente i dati personali presenti nel documento (nomi, codici
   - Dizionario di oltre 400 nomi e cognomi italiani con riconoscimento contestuale
   - Modello AI (DistilBERT via Transformers.js) per persone, organizzazioni e luoghi
 - **Pseudonimi chiaramente identificabili**: `[PERSONA_1]`, `[ORG_2]`, `[CF_3]` — impossibili da confondere con dati reali
-- **Formati supportati**: PDF, DOCX, TXT
+- **Formati supportati**: PDF, DOCX, TXT, MD
 - **Output PDF sicuro**: il documento viene ricostruito da zero — nessun dato originale rimane nel file
 - **Revisione manuale**: conferma, modifica, rimuovi o aggiungi entità prima dell'anonimizzazione
 - **Parole personalizzate**: aggiungi manualmente parole o frasi specifiche da anonimizzare
@@ -53,7 +53,7 @@ npm run package    # Crea l'installer per la piattaforma corrente
 
 ## Come funziona
 
-1. **Carica il documento** — Trascina un file PDF, DOCX o TXT nella zona di caricamento, oppure clicca per selezionarlo
+1. **Carica il documento** — Trascina un file PDF, DOCX, TXT o MD nella zona di caricamento, oppure clicca per selezionarlo
 2. **Analisi automatica** — Il software identifica i dati personali con tre metodi complementari: pattern regex, dizionario nomi italiani e modello AI
 3. **Revisione** — Esamina le entità trovate, modifica gli pseudonimi, rimuovi i falsi positivi, aggiungi parole personalizzate
 4. **Anonimizzazione** — Il documento viene generato con tutti i dati personali sostituiti da pseudonimi univoci
@@ -79,7 +79,7 @@ Per i documenti **PDF**, l'output viene **ricostruito completamente da zero**: o
 
 Per i documenti **DOCX**, le entità vengono sostituite direttamente nel contenuto XML interno al file Word preservando la formattazione.
 
-Per i file **TXT**, la sostituzione avviene direttamente nel testo.
+Per i file **TXT** e **MD**, la sostituzione avviene direttamente nel testo (la formattazione Markdown è preservata).
 
 ## Riduzione dei falsi positivi
 

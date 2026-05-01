@@ -56,8 +56,8 @@ export default function DropZone() {
     if (files.length > 0) {
       const file = files[0]
       const ext = file.name.split('.').pop()?.toLowerCase()
-      if (!['pdf', 'docx', 'txt'].includes(ext || '')) {
-        setError('Formato file non supportato. Usa PDF, DOCX o TXT.')
+      if (!['pdf', 'docx', 'txt', 'md'].includes(ext || '')) {
+        setError('Formato file non supportato. Usa PDF, DOCX, TXT o MD.')
         return
       }
       // Use Electron's webUtils.getPathForFile to get the real file path
@@ -123,6 +123,7 @@ export default function DropZone() {
           <span className="px-3 py-1 bg-red-900/30 text-red-300 rounded-md text-xs font-medium border border-red-800/30">PDF</span>
           <span className="px-3 py-1 bg-blue-900/30 text-blue-300 rounded-md text-xs font-medium border border-blue-800/30">DOCX</span>
           <span className="px-3 py-1 bg-navy-800 text-navy-300 rounded-md text-xs font-medium border border-navy-700/50">TXT</span>
+          <span className="px-3 py-1 bg-emerald-900/30 text-emerald-300 rounded-md text-xs font-medium border border-emerald-800/30">MD</span>
         </div>
       </div>
 

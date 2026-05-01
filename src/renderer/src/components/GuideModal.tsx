@@ -42,6 +42,7 @@ export default function GuideModal({ onClose }: Props) {
               <li><strong className="text-white">PDF</strong> &mdash; Il documento viene ricostruito da zero con gli pseudonimi al posto dei dati personali. Nessun testo originale rimane nel file.</li>
               <li><strong className="text-white">DOCX</strong> &mdash; Le entit&agrave; vengono sostituite direttamente nel contenuto XML del documento Word.</li>
               <li><strong className="text-white">TXT</strong> &mdash; Sostituzione diretta nel testo.</li>
+              <li><strong className="text-white">MD</strong> &mdash; Sostituzione diretta nel testo Markdown, preservando intestazioni, liste e formattazione.</li>
             </ul>
           </Section>
 
