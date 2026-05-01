@@ -33,6 +33,8 @@ const api = {
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS),
   getAdvancedStatus: () => ipcRenderer.invoke(IPC_CHANNELS.GET_ADVANCED_STATUS),
   setAdvancedMode: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS.SET_ADVANCED_MODE, enabled),
+  setPreserveFormatting: (enabled: boolean) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SET_PRESERVE_FORMATTING, enabled),
   onAdvancedProgress: (callback: (progress: { percent: number; message: string }) => void) => {
     const handler = (_event: any, progress: any) => callback(progress)
     ipcRenderer.on('advanced-progress', handler)

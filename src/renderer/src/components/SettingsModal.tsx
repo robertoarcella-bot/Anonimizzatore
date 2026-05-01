@@ -12,6 +12,7 @@ type AdvancedStatus = {
 
 export default function SettingsModal({ onClose }: Props) {
   const [advancedMode, setAdvancedMode] = useState(false)
+  const [preserveFormatting, setPreserveFormatting] = useState(false)
   const [status, setStatus] = useState<AdvancedStatus>({ ready: false, loading: false, error: null })
   const [progress, setProgress] = useState<{ percent: number; message: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -21,6 +22,7 @@ export default function SettingsModal({ onClose }: Props) {
     Promise.all([window.api.getSettings(), window.api.getAdvancedStatus()]).then(([s, st]) => {
       if (!mounted) return
       setAdvancedMode(s.advancedMode || false)
+      setPreserveFormatting(s.preserveFormatting || false)
       setStatus(st)
     })
 
@@ -37,6 +39,16 @@ export default function SettingsModal({ onClose }: Props) {
 
     return () => { mounted = false; cleanup() }
   }, [])
+
+  const handleTogglePreserve = async () => {
+    const newValue = !preserveFormatting
+    setPreserveFormatting(newValue)
+    try {
+      await window.api.setPreserveFormatting(newValue)
+    } catch {
+      setPreserveFormatting(!newValue)
+    }
+  }
 
   const handleToggle = async () => {
     if (busy) return
@@ -77,6 +89,57 @@ export default function SettingsModal({ onClose }: Props) {
         </div>
 
         <div className="px-6 py-5 space-y-5">
+          <Section title="Conserva formattazione PDF (sperimentale)">
+            <p className="text-sm text-navy-300 leading-relaxed mb-4">
+              Quando attiva, il PDF anonimizzato mantiene il layout, i font, le immagini, le firme grafiche
+              e le intestazioni del documento originale. Le entit&agrave; vengono coperte con un rettangolo
+              bianco e sostituite dallo pseudonimo nella stessa posizione.
+            </p>
+
+            <div className="bg-amber-950/30 rounded-lg p-4 mb-4 border border-amber-700/40">
+              <div className="flex items-start gap-3">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div className="text-xs text-navy-200 leading-relaxed">
+                  <strong className="text-amber-300">Riduce la sicurezza</strong>: il testo originale rimane nelle
+                  strutture interne del PDF (content stream, metadati). Visivamente il documento appare anonimizzato,
+                  ma il testo originale potrebbe essere recuperato tramite copia-incolla o estrazione testo.
+                  <br /><br />
+                  Per pseudonimizzazione audit-grade (es. deposito presso autorit&agrave;) <strong className="text-white">disattivare
+                  questa opzione</strong>: la modalit&agrave; predefinita ricostruisce il PDF da zero rimuovendo ogni traccia
+                  del testo originale.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between bg-navy-800/40 rounded-lg px-4 py-3 border border-navy-700/30">
+              <div className="flex-1">
+                <p className="text-sm text-navy-100 font-medium">Conserva formattazione</p>
+                <p className="text-xs text-navy-500 mt-0.5">
+                  {preserveFormatting ? (
+                    <span className="text-amber-400">Attiva &mdash; fedelt&agrave; visiva, sicurezza ridotta</span>
+                  ) : (
+                    <span className="text-emerald-400">Modalit&agrave; sicura (PDF ricostruito)</span>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={handleTogglePreserve}
+                className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer ${
+                  preserveFormatting ? 'bg-amber-600' : 'bg-navy-700'
+                }`}
+                aria-label="Toggle preserve formatting"
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                    preserveFormatting ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+          </Section>
+
           <Section title="Modalit&agrave; avanzata NER">
             <p className="text-sm text-navy-300 leading-relaxed mb-4">
               Attiva un terzo modello NER multilingue

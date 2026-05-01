@@ -102,10 +102,18 @@ export default function GuideModal({ onClose }: Props) {
 
           <Section title="Sicurezza dell'output">
             <p>
-              Per i file PDF, il documento anonimizzato viene <strong className="text-white">ricostruito completamente da zero</strong>.
+              Per i file PDF, in <strong className="text-white">modalit&agrave; predefinita</strong> il documento
+              anonimizzato viene <strong className="text-white">ricostruito completamente da zero</strong>.
               Il testo originale non &egrave; presente in nessun livello del file: n&eacute; nei content stream,
               n&eacute; nei metadati, n&eacute; in layer nascosti. Selezionando e copiando il testo dal PDF
               anonimizzato si otterranno solo gli pseudonimi.
+            </p>
+            <p className="mt-2">
+              Esiste anche una modalit&agrave; opzionale <strong className="text-amber-300">&laquo;Conserva formattazione&raquo;</strong>
+              (Impostazioni) che mantiene layout, font e firme grafiche del PDF originale, applicando solo una
+              copertura visiva sulle entit&agrave;. In quella modalit&agrave; il testo originale rimane nelle
+              strutture interne del file: usarla solo quando la fedelt&agrave; visiva &egrave; pi&ugrave;
+              importante della pseudonimizzazione audit-grade.
             </p>
           </Section>
 

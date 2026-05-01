@@ -71,5 +71,6 @@ export const IPC_CHANNELS = {
   GET_FILE_DIR: 'get-file-dir',
   GET_SETTINGS: 'get-settings',
   SET_ADVANCED_MODE: 'set-advanced-mode',
-  GET_ADVANCED_STATUS: 'get-advanced-status'
+  GET_ADVANCED_STATUS: 'get-advanced-status',
+  SET_PRESERVE_FORMATTING: 'set-preserve-formatting'
 } as const

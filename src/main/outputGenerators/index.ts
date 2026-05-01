@@ -1,8 +1,10 @@
 import { Entity } from '../../shared/types'
 import { anonymizePdf } from './pdfGenerator'
+import { anonymizePdfPreserveFormat } from './pdfGeneratorPreserveFormat'
 import { anonymizeDocx } from './docxGenerator'
 import { anonymizeTxt } from './txtGenerator'
 import { anonymizeToMarkdown } from './mdGenerator'
+import { loadSettings } from '../services/settingsManager'
 import { extname } from 'path'
 
 export interface AnonymizationResult {
@@ -17,10 +19,14 @@ export async function anonymizeDocument(
 ): Promise<AnonymizationResult> {
   const ext = extname(filePath).toLowerCase()
 
+  const settings = loadSettings()
+
   let primary: string
   switch (ext) {
     case '.pdf':
-      primary = await anonymizePdf(filePath, entities, outputDir)
+      primary = settings.preserveFormatting
+        ? await anonymizePdfPreserveFormat(filePath, entities, outputDir)
+        : await anonymizePdf(filePath, entities, outputDir)
       break
     case '.docx':
       primary = await anonymizeDocx(filePath, entities, outputDir)

@@ -180,4 +180,10 @@ export function registerIpcHandlers(): void {
       return { success: true, ...getAdvancedNerStatus() }
     }
   })
+
+  // Toggle "preserve PDF formatting" mode
+  ipcMain.handle(IPC_CHANNELS.SET_PRESERVE_FORMATTING, async (_event, enabled: boolean) => {
+    saveSettings({ preserveFormatting: enabled })
+    return { success: true, preserveFormatting: enabled }
+  })
 }

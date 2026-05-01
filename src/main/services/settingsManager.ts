@@ -4,10 +4,12 @@ import { existsSync, readFileSync, writeFileSync } from 'fs'
 
 export interface AppSettings {
   advancedMode: boolean
+  preserveFormatting: boolean
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  advancedMode: false
+  advancedMode: false,
+  preserveFormatting: false
 }
 
 function getSettingsPath(): string {

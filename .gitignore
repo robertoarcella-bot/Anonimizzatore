@@ -5,3 +5,7 @@ dist/
 .DS_Store
 macos-installer.zip
 cognomi_raw.txt
+
+# Reference / sample documents — never commit
+LANCI*
+*comparsa costituzione_anonimizzato*
